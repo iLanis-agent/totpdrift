@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TotpDrift - why your 2FA code is rejected</title>
+<meta name="description" content="Compute TOTP codes and find out whether a rejected authenticator code is a clock problem, a wrong setting or the wrong secret.">
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:#1a0f14; color:#f9eef1; line-height:1.6; }
+  .wrap { max-width:680px; margin:0 auto; padding:48px 20px 60px; }
+  .logo { font-size:46px; font-weight:800; } .logo span { color:#fb7185; }
+  .tag { font-size:19px; margin-top:10px; color:#ecd6dc; }
+  .cta { display:inline-block; margin-top:26px; background:#fb7185; color:#1a0f14; font-weight:700; padding:14px 30px; border-radius:12px; text-decoration:none; }
+  h2 { font-size:21px; margin:40px 0 10px; } li { color:#cdb3ba; margin-bottom:8px; } ul { margin-left:20px; }
+  .demo { margin-top:26px; background:#2a1620; border-radius:14px; padding:18px; } .demo b { color:#fb7185; }
+  footer { margin-top:50px; font-size:13px; color:#9a7d86; } a { color:#fb7185; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">Totp<span>Drift</span></div>
+  <div class="tag">Is your 2FA code wrong, or just old?</div>
+  <a class="cta" href="app.html">Open the app</a>
+  <div class="demo">With the RFC 6238 test secret, at Unix time <b>1111111109</b> the 8-digit SHA-1 code is <b>07081804</b>. Type a code that came from 90 seconds earlier and TotpDrift tells you it is <b>3 steps old</b>: a clock that runs 90 seconds slow, or a very slow typist.</div>
+  <h2>What it does</h2>
+  <ul><li>Current, previous and next code from any Base32 secret or otpauth link</li><li>SHA-1, SHA-256 or SHA-512, 6 to 8 digits, any period</li><li>Finds which time step a typed code belongs to, so you see the clock drift in seconds</li><li>Builds an otpauth link from your settings</li></ul>
+  <footer>Runs in your browser, nothing is sent anywhere. Use test accounts, not real secrets. <a href="https://github.com/iLanis-agent/totpdrift">Source</a></footer>
+</div>
+</body>
+</html>
