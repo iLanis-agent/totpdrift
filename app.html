@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TotpDrift - why your 2FA code is rejected</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:#1a0f14; color:#f9eef1; line-height:1.5; }
+  .wrap { max-width:700px; margin:0 auto; padding:26px 16px 50px; }
+  h1 { font-size:28px; } h1 span { color:#fb7185; }
+  .sub { color:#c9aab3; margin:6px 0 16px; }
+  .card { background:#2a1620; border-radius:14px; padding:14px; margin-bottom:12px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; }
+  label { font-size:12px; color:#c9aab3; display:block; margin-bottom:3px; }
+  input,select { width:100%; background:#1a0f14; color:#f9eef1; border:1px solid #6e4a55; border-radius:8px; padding:8px; font-size:15px; font-family:inherit; }
+  button { background:#a3293f; color:#f9eef1; border:0; padding:8px 14px; border-radius:8px; cursor:pointer; font-size:14px; margin-right:6px; margin-top:10px; }
+  table { width:100%; border-collapse:collapse; } td,th { text-align:left; padding:8px 4px; border-bottom:1px solid #4a2f38; } th { font-size:12px; color:#c9aab3; font-weight:600; }
+  td.v { font-size:22px; font-weight:800; color:#fb7185; } tr.me td.v { color:#f9eef1; }
+  .stats { display:flex; gap:22px; flex-wrap:wrap; margin-top:12px; } .stats b { display:block; font-size:20px; } .muted { color:#c9aab3; font-size:13px; }
+  .err { color:#ff9c8a; } .note { font-size:12.5px; color:#9a7d86; margin-top:6px; }
+
+  td.v { font-size:17px; } td, th { font-size:14px; } .bar { height:10px; background:#1a0f14; border-radius:6px; overflow:hidden; margin-top:6px; } .bar i { display:block; height:100%; background:#fb7185; } .bar i.over { background:#ff7b72; } .no { color:#ff9c8a; }
+  .cb { display:inline-flex; align-items:center; gap:4px; margin-right:12px; font-size:14px; color:#f9eef1; } .cb input { width:auto; } .big { font-family:monospace; font-size:26px; font-weight:800; color:#fb7185; } td.v.m { font-family:monospace; }
+  textarea { width:100%; background:#1a0f14; color:#f9eef1; border:1px solid #6e4a55; border-radius:8px; padding:8px; font-size:14px; font-family:monospace; min-height:110px; } .ok { color:#86efac; font-weight:700; } .no { color:#ff9c8a; } td.m { font-family:monospace; } .chip { display:inline-block; font-family:monospace; background:#1a0f14; border-radius:6px; padding:2px 6px; margin:2px 4px 2px 0; }
+  textarea { width:100%; background:#1a0f14; color:#f9eef1; border:1px solid #6e4a55; border-radius:8px; padding:8px; font-size:13px; font-family:monospace; min-height:130px; } .badge { display:inline-block; font-weight:800; padding:4px 12px; border-radius:20px; background:#1a0f14; } .bar { height:14px; background:#1a0f14; border-radius:8px; position:relative; margin:12px 0 6px; overflow:hidden; } .bar i.f { position:absolute; left:0; top:0; bottom:0; background:#e04860; } .bar i.n { position:absolute; top:0; bottom:0; width:3px; background:#fff; }
+  .seg { display:inline-block; height:22px; background:#e04860; border-radius:4px; margin:2px 2px 2px 0; vertical-align:middle; } .seg.last { background:#a3293f; } .chip { display:inline-block; font-family:monospace; background:#1a0f14; border-radius:6px; padding:2px 8px; margin:2px 4px 2px 0; font-size:16px; }
+.code{font-family:monospace;font-size:44px;font-weight:800;letter-spacing:6px;color:#fb7185}.small{font-family:monospace;font-size:20px;color:#c9aab3}.three{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-end;margin-top:6px}.three div span{display:block;font-size:12px;color:#9a7d86}.uri{font-family:monospace;font-size:12.5px;word-break:break-all;background:#1a0f14;border-radius:8px;padding:8px;margin-top:6px}.hit{color:#86efac;font-weight:700}.miss{color:#ff9c8a;font-weight:700}</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Totp<span>Drift</span></h1>
+  <div class="sub">Compute authenticator codes from a secret, and find out if a rejected code is a clock problem, a wrong setting, or the wrong secret.</div>
+  <div class="card">
+    <label>Secret (Base32) or a full otpauth:// link</label>
+    <input id="sec" value="" spellcheck="false" autocomplete="off">
+    <div class="grid" style="margin-top:10px"><div><label>Algorithm</label><select id="alg"><option>SHA1</option><option>SHA256</option><option>SHA512</option></select></div><div><label>Digits</label><select id="dg"><option>6</option><option>7</option><option>8</option></select></div><div><label>Period (seconds)</label><input id="per" value="30"></div><div><label>Time as Unix seconds (empty = now)</label><input id="ts" value="" placeholder="live clock"></div></div>
+    <button id="p1">RFC 6238 test vector</button><button id="p2">Example link</button><button id="p3">Random secret</button>
+    <div id="cur" style="margin-top:14px"></div>
+  </div>
+  <div class="card"><h2 style="margin:0 0 8px;font-size:15px">Code rejected? Check it</h2>
+    <div class="grid"><div><label>The code you typed or your app showed</label><input id="tc" placeholder="123456" inputmode="numeric"></div><div><label>Look this many steps either way</label><input id="rng" value="40"></div></div>
+    <div id="chk" style="margin-top:10px"></div></div>
+  <div class="card"><h2 style="margin:0 0 8px;font-size:15px">Make an otpauth link</h2>
+    <div class="grid"><div><label>Issuer</label><input id="iss" value="Example"></div><div><label>Account</label><input id="acc" value="alice@example.com"></div></div><div id="uri" class="uri"></div></div>
+  <div class="note">Codes follow RFC 4226 (HOTP) and RFC 6238 (TOTP). RFC 6238 recommends a validator accept at most one step of delay; many servers accept one step either side, so an app that is more than about 30 seconds off will be rejected. Base32 follows RFC 4648 and the link format follows the Google Authenticator Key URI wiki, which lists 6 or 8 digits and says Google's own apps ignore the algorithm and period parameters, so a 7-digit, SHA-256 or non-30-second setup may not work in every app. Everything runs in your browser and nothing is sent anywhere, but do not paste a secret for an account you care about on a shared screen or into a page you did not build yourself. Use a test account.</div>
+</div>
+<script src="engine.js"></script>
+<script>
+(function () {
+  var T = window.TotpDrift, $ = function (i) { return document.getElementById(i); }, busy = false, again = false;
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+  function fmt(c) { return c.length === 6 ? c.slice(0, 3) + ' ' + c.slice(3) : c.length === 8 ? c.slice(0, 4) + ' ' + c.slice(4) : c; }
+  function settings() {
+    var raw = $('sec').value.trim(), alg = $('alg').value, dg = +$('dg').value, per = parseInt($('per').value, 10);
+    if (/^otpauth:\/\//i.test(raw)) { var u = T.parseUri(raw); if (!u) return { err: 'That otpauth link is not valid (it needs a secret).' }; $('sec').value = u.secret; $('alg').value = T.ALGS[u.alg] ? u.alg : 'SHA1'; $('dg').value = String(u.digits); $('per').value = String(u.period); if (u.issuer) $('iss').value = u.issuer; if (u.account) $('acc').value = u.account; return settings(); }
+    var key = T.b32decode(raw); if (!raw) return { err: 'Enter a Base32 secret, or press a preset.' };
+    if (!key || !key.length) return { err: 'That is not valid Base32. Use letters A-Z and digits 2-7 only.' };
+    if (!(per >= 1 && per <= 3600)) return { err: 'Period must be between 1 and 3600 seconds.' };
+    var ts = $('ts').value.trim(), ms; if (ts === '') ms = Date.now(); else { if (!/^\d+$/.test(ts)) return { err: 'Unix seconds must be a whole number.' }; ms = parseInt(ts, 10) * 1000; }
+    return { o: { alg: alg, key: key, period: per, digits: dg, t0: 0 }, ms: ms, live: ts === '', secret: raw, per: per, dg: dg, alg: alg };
+  }
+  async function run() {
+    if (busy) { again = true; return; } busy = true;
+    try {
+      var s = settings();
+      if (s.err) { $('cur').innerHTML = '<span class="err">' + s.err + '</span>'; $('chk').innerHTML = ''; $('uri').textContent = ''; return; }
+      var o = s.o, cur = await T.totp(o, s.ms), prev = await T.hotp(o.alg, o.key, T.step(s.ms, o.period) - 1, o.digits), next = await T.hotp(o.alg, o.key, T.step(s.ms, o.period) + 1, o.digits);
+      var left = o.period - (Math.floor(s.ms / 1000) % o.period);
+      $('cur').innerHTML = '<div class="three"><div><span>now</span><div class="code">' + fmt(cur) + '</div></div><div><span>previous</span><div class="small">' + fmt(prev) + '</div></div><div><span>next</span><div class="small">' + fmt(next) + '</div></div></div><div class="bar"><i class="f" style="width:' + (left / o.period * 100) + '%"></i></div><div class="muted">' + left + ' s left in this step (step ' + T.step(s.ms, o.period) + (s.live ? '' : ', fixed time ' + new Date(s.ms).toISOString().replace('T', ' ').slice(0, 19) + ' UTC') + ')</div>';
+      var tc = $('tc').value.replace(/\s/g, ''), rng = parseInt($('rng').value, 10);
+      if (!tc) $('chk').innerHTML = '<span class="muted">Type the code that failed.</span>';
+      else if (!/^\d+$/.test(tc) || tc.length !== o.digits) $('chk').innerHTML = '<span class="miss">A code with these settings has ' + o.digits + ' digits.</span> If your app shows a different length, change Digits.';
+      else if (!(rng >= 0 && rng <= 500)) $('chk').innerHTML = '<span class="err">Look range must be 0 to 500 steps.</span>';
+      else {
+        var hits = await T.findOffset(o, tc, s.ms, rng);
+        if (!hits.length) $('chk').innerHTML = '<span class="miss">No match within ' + rng + ' steps (' + (rng * o.period) + ' s) either way.</span> A clock problem is unlikely: check the secret, the algorithm, the digit count and the period, or whether the code came from a different account.';
+        else $('chk').innerHTML = hits.map(function (h) { return h.steps === 0 ? '<span class="hit">This is the current code.</span> If a server rejected it, the server may be slow, or the code expired while you typed.' : '<span class="hit">This code belongs to ' + Math.abs(h.steps) + ' step' + (Math.abs(h.steps) > 1 ? 's' : '') + ' (' + Math.abs(h.seconds) + ' s) ' + (h.steps < 0 ? 'ago' : 'ahead') + '.</span> ' + (h.steps < 0 ? 'The code was already old: typed too slowly, or the device making it runs about ' + Math.abs(h.seconds) + ' s behind the verifier.' : 'The device making it runs about ' + h.seconds + ' s ahead of the verifier.') + (Math.abs(h.steps) > 1 ? ' That is more than a validator that allows one step of delay will accept.' : ''); }).join('<br>');
+      }
+      $('uri').textContent = T.buildUri({ issuer: $('iss').value.trim(), account: $('acc').value.trim(), secret: s.secret, alg: o.alg, digits: o.digits, period: o.period });
+    } finally { busy = false; if (again) { again = false; run(); } }
+  }
+  $('p1').onclick = function () { $('sec').value = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ'; $('alg').value = 'SHA1'; $('dg').value = '8'; $('per').value = '30'; $('ts').value = '1111111109'; $('tc').value = '31404137'; run(); };
+  $('p2').onclick = function () { $('sec').value = 'otpauth://totp/Example:alice@google.com?secret=JBSWY3DPEHPK3PXP&issuer=Example'; $('ts').value = ''; $('tc').value = ''; run(); };
+  $('p3').onclick = function () { var b = new Uint8Array(20); crypto.getRandomValues(b); $('sec').value = T.b32encode(b, false); $('alg').value = 'SHA1'; $('dg').value = '6'; $('per').value = '30'; $('ts').value = ''; $('tc').value = ''; run(); };
+  ['sec', 'alg', 'dg', 'per', 'ts', 'tc', 'rng', 'iss', 'acc'].forEach(function (i) { $(i).oninput = run; $(i).onchange = run; });
+  setInterval(function () { if ($('ts').value.trim() === '' && $('sec').value.trim()) run(); }, 1000);
+  $('p1').onclick();
+})();
+</script>
+</body>
+</html>
